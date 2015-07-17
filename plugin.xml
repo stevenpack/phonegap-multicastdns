@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<plugin    xmlns="http://www.phonegap.com/ns/plugins/1.0"
+           id="com.koalasafe.cordova.plugin.multicastdns"
+           version="1.0.0">
+
+    <name>MulticastDNS</name>
+    <description>Cordova Multicast DNS Plugin for Android</description>
+    <license>MIT</license>
+    <keywords>cordova,multicast,mDns,android</keywords>
+
+    <!-- android -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="MulticastDNSPlugin">
+                <param name="android-package" value="com.koalasafe.cordova.plugin.multicastdns.MulticastDNSPlugin"/>
+            </feature>
+        </config-file>
+        
+        <js-module src="www/android/MulticastDNS.js" name="MulticastDNS">
+            <clobbers target="multicastDNS" />
+        </js-module>
+
+        <source-file src="src/android/DNSAnswer.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/DNSBuffer.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/DNSComponent.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/DNSException.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/DNSMessage.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/DNSQuestion.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/MulticastDNSPlugin.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/MulticastDnsRequestor.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+        <source-file src="src/android/MulticastDnsRequestResultHandler.java" target-dir="src/com/koalasafe/cordova/plugin/multicastdns" />
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+            <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+            <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+        </config-file>
+    </platform>
+</plugin>
