@@ -1,0 +1,29 @@
+{
+  "name": "phonegap-multicastdns",
+  "version": "1.0.1",
+  "description": "Cordova Multicast DNS Plugin for Android",
+  "cordova": {
+    "id": "com.koalasafe.cordova.plugin.multicastdns",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevenpack/phonegap-multicastdns.git"
+  },
+  "keywords": [
+    "cordova",
+    "multicast",
+    "mDns",
+    "android",
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "Steven Pack",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stevenpack/phonegap-multicastdns/issues"
+  },
+  "homepage": "https://github.com/stevenpack/phonegap-multicastdns#readme"
+}
