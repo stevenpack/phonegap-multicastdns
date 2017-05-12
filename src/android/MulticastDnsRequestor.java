@@ -7,6 +7,7 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.MulticastSocket;
@@ -17,6 +18,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 import java.util.LinkedList;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by steve on 16/07/15.
@@ -26,6 +28,9 @@ public class MulticastDnsRequestor {
     private static final String TAG = "MulticastDnsRequestor";
     private static final int BUFFER_SIZE = 4096;
 
+    private final int queryTimeout;
+    private final Boolean isIPv6;
+    private final String logPrefix;
     private final String multicastIP;
     private final int port;
     private final NetworkInterface networkInterface;
@@ -56,7 +61,10 @@ public class MulticastDnsRequestor {
     public MulticastDnsRequestor(String multicastIP, int port, NetworkInterface networkInterface, WifiManager wifiManager) throws UnknownHostException, SocketException {
         this.multicastIP = multicastIP;
         this.multicastIPAddr = InetAddress.getByName(this.multicastIP);
+        this.isIPv6 = this.multicastIPAddr instanceof Inet6Address;
+        this.logPrefix = this.isIPv6 ? "ipv6: " : "ipv4: ";
         this.port = port;
+        this.queryTimeout = 10000; //Milliseconds
 
         Log.d(TAG, String.format("Using %s:%s", multicastIPAddr, port));
 
@@ -82,9 +90,8 @@ public class MulticastDnsRequestor {
      * @return
      * @throws IOException
      */
-    public String query(String host) throws IOException {
+    public String query(String host) throws IOException, QueryTimeoutException {
 
-        String answer = null;
         WifiManager.MulticastLock multicastLock = this.wifiManager.createMulticastLock("MulticastDNSRequestor");
 
         try {
@@ -95,48 +102,56 @@ public class MulticastDnsRequestor {
             byte[] queryBytes = q.serialize();
 
             DatagramPacket request = new DatagramPacket(queryBytes, queryBytes.length, this.multicastIPAddr, this.port);
-            Log.i(TAG, "Sending Request: " + q);
+            Log.i(TAG, this.logPrefix + "Sending Request: " + q);
             this.multicastSocket.send(request);
-            Log.d(TAG, "Request Sent");
+            Log.d(TAG, this.logPrefix + "Request Sent");
 
             byte[] responseBuffer = new byte[BUFFER_SIZE];
             DatagramPacket response = new DatagramPacket(responseBuffer, BUFFER_SIZE);
 
-            while (answer == null) {
+            long startTime = System.currentTimeMillis();
+            while ((System.currentTimeMillis()-startTime) < this.queryTimeout) {
                 openSocket();
                 java.util.Arrays.fill(responseBuffer, (byte) 0); // clear buffer
                 try {
-                    Log.d(TAG, "About to receive");
+                    Log.d(TAG, this.logPrefix + "About to receive");
                     multicastSocket.receive(response);
-                    Log.d(TAG, "Received. Processing...");
+                    Log.d(TAG, this.logPrefix + "Received. Processing...");
                     try
                     {
                         DNSMessage responseMsg = new DNSMessage(response.getData(), response.getOffset(), response.getLength());
                         for (DNSAnswer a : responseMsg.getAnswers()) {
                             if (a.name.equals(host)) {
                                 if (a.type == DNSComponent.Type.A) {
-                                    Log.i(TAG, "Got IP4 answer: " + a);
-                                    answer = a.getRdataString().replace("/", "");
+                                    Log.i(TAG, this.logPrefix + "Got IPv4 answer: " + a);
+                                    return a.getRdataString().replace("/", "");
                                 } else {
-                                    Log.d(TAG, "Ignoring other answer: " + a);
+                                    Log.d(TAG, this.logPrefix + "Ignoring response type " + a.type);
                                 }
+                            } else{
+                                Log.d(TAG, this.logPrefix + "Ignoring response for host " + a.name);
                             }
                         }
+                   
+                        Log.d(TAG, this.logPrefix + "Ignored response " + responseMsg); 
+                        
                     } catch (Exception dnsEx) {
-                        Log.v(TAG, "Unsupported packet. Message: " + dnsEx.getMessage());
+                        Log.v(TAG, this.logPrefix + "Unsupported packet. Message: " + dnsEx.getMessage());
                     }
                 }
                 catch (SocketTimeoutException stEx) {
-                    Log.v(TAG, "Timeout");
+                    Log.v(TAG, this.logPrefix + "Timeout");
                 }
                 catch (IOException ioEx) {
-                    Log.w(TAG, "Error during query: " + ioEx.getStackTrace());
+                    Log.w(TAG, this.logPrefix + "Error during query: " + ioEx.getStackTrace());
                 }
-            }
+            }        
+
         } finally {
             multicastLock.release();
         }
-        return answer;
+
+        throw new QueryTimeoutException();
     }
 
     private void openSocket() throws IOException {
@@ -158,15 +173,15 @@ public class MulticastDnsRequestor {
                 int wifiIp = wifiInfo.getIpAddress();
                 int ifIp = inetAddressToInt(ifAddr.getAddress());
 
-                Log.d(TAG, String.format("Comparing %s and %s", wifiIp, ifIp));
+                Log.d(TAG, this.logPrefix + String.format("Comparing %s and %s", wifiIp, ifIp));
 
                 if (wifiIp==ifIp) {
-                    Log.i(TAG, String.format("Using %s as the network interface as it matches WifiManager IP of %s", i, wifiInfo.getIpAddress()));
+                    Log.i(TAG, this.logPrefix + String.format("Using %s as the network interface as it matches WifiManager IP of %s", i, wifiInfo.getIpAddress()));
                     return i;
                 }
             }
         }
-        Log.e(TAG, "Couldn't find a network interface for the wifi IP: " + wifiInfo.getIpAddress());
+        Log.e(TAG, this.logPrefix + "Couldn't find a network interface for the wifi IP: " + wifiInfo.getIpAddress());
         return null;
     }
 
