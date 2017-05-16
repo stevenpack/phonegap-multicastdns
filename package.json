@@ -1,6 +1,6 @@
 {
   "name": "phonegap-multicastdns",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cordova Multicast DNS Plugin for Android",
   "cordova": {
     "id": "com.koalasafe.cordova.plugin.multicastdns",
